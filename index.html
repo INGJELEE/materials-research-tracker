@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>소재연구실 업무 진행 관리</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -224,18 +226,73 @@ function genDoc(key, p) {
   return genTest(p);
 }
 
-//=================== 저장소 (브라우저 localStorage) ===================
-function loadProjects() {
+//=================== Firebase 연결 ===================
+const firebaseConfig = {
+  apiKey: "AIzaSyCvLjtObGK-OaGnVQoLTWrtNG-QkKEh3Vo",
+  authDomain: "materials-tracker-11b4d.firebaseapp.com",
+  databaseURL: "https://materials-tracker-11b4d-default-rtdb.firebaseio.com",
+  projectId: "materials-tracker-11b4d",
+  storageBucket: "materials-tracker-11b4d.firebasestorage.app",
+  messagingSenderId: "134798469200",
+  appId: "1:134798469200:web:84eb0c8555af3f4a898955"
+};
+
+let db = null;
+let firebaseReady = false;
+let connStatus = "연결 중...";
+
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  firebaseReady = true;
+} catch (e) {
+  connStatus = "연결 실패 (오프라인 모드)";
+}
+
+const STORAGE_KEY_BACKUP = "sojae_projects_v1"; // 오프라인 백업용 (위 STORAGE_KEY와 동일)
+
+// 로컬 백업 (Firebase 안 될 때 대비)
+function saveLocal(list) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch (e) {}
+}
+function loadLocal() {
   try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : []; }
   catch (e) { return []; }
 }
-function saveProjects(list) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); return true; }
-  catch (e) { return false; }
+
+// Firebase에 저장 (전체 목록)
+function saveToFirebase(list) {
+  if (!firebaseReady) { saveLocal(list); return; }
+  const clean = list.map((p) => { const c = { ...p }; delete c._expanded; return c; });
+  db.ref("projects").set(clean).catch(() => { connStatus = "저장 실패"; renderStatus(); });
+  saveLocal(list); // 로컬에도 백업
+}
+
+// Firebase 실시간 구독 (다른 사람 변경이 자동 반영)
+function subscribeFirebase() {
+  if (!firebaseReady) { projects = loadLocal(); render(); return; }
+  db.ref("projects").on("value", (snapshot) => {
+    const val = snapshot.val();
+    // _expanded 상태 보존
+    const expandedIds = new Set(projects.filter((p) => p._expanded).map((p) => p.id));
+    projects = Array.isArray(val) ? val.filter(Boolean) : (val ? Object.values(val) : []);
+    projects.forEach((p) => { if (expandedIds.has(p.id)) p._expanded = true; });
+    connStatus = "실시간 연결됨 ✓";
+    saveLocal(projects);
+    render();
+  }, (err) => {
+    connStatus = "읽기 실패 — 오프라인 데이터 사용";
+    projects = loadLocal(); render();
+  });
+}
+
+function renderStatus() {
+  const el = document.querySelector(".conn-status");
+  if (el) el.textContent = connStatus;
 }
 
 //=================== 상태 ===================
-let projects = loadProjects();
+let projects = [];
 let view = "board";
 let formState = null;       // 등록/수정 폼 데이터 (null이면 닫힘)
 let formEditingId = null;
@@ -244,7 +301,7 @@ let docModal = null;        // { project, stageKey }
 //=================== 렌더 ===================
 const app = document.getElementById("app");
 
-function persist() { saveProjects(projects); render(); }
+function persist() { saveToFirebase(projects); render(); }
 
 function flash(msg) {
   let t = document.querySelector(".toast");
@@ -277,7 +334,8 @@ function headerHTML() {
 
 function databarHTML() {
   return '<div class="databar">' +
-    '<span class="sync-note">💾 데이터는 이 PC(브라우저)에 자동 저장됩니다. 팀 공유는 [내보내기]로 파일 저장 후 공유폴더에 올리고, 팀원은 [불러오기]로 엽니다.</span>' +
+    '<span class="conn-status" style="font-weight:700;color:#2D6A8E">' + connStatus + '</span>' +
+    '<span class="sync-note">🔗 실시간 공유 중 — 팀원이 등록/수정하면 자동으로 반영됩니다. (백업이 필요하면 내보내기 사용)</span>' +
     '<button class="btn-line" data-action="export">📤 내보내기 (백업)</button>' +
     '<button class="btn-line" data-action="import">📥 불러오기</button>' +
     '<input type="file" id="importFile" accept="application/json" style="display:none" />' +
@@ -674,6 +732,7 @@ function importData(e) {
 
 //=================== 시작 ===================
 render();
+subscribeFirebase();
 </script>
 </body>
 </html>
