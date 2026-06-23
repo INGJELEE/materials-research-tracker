@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>소재연구실 업무 진행 관리</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+    background: #FAF8F4; color: #2A241D; padding-bottom: 60px;
+  }
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding: 24px 32px 16px; border-bottom: 2px solid #2A241D;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .brand { font-size: 12px; letter-spacing: 3px; color: #9A8C7A; font-weight: 600; text-transform: uppercase; }
+  .title { font-size: 26px; font-weight: 800; margin-top: 4px; letter-spacing: -0.5px; }
+  .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .view-toggle { display: flex; border: 1.5px solid #2A241D; border-radius: 8px; overflow: hidden; }
+  .vt { border: none; background: #fff; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; color: #6B5D4D; font-family: inherit; }
+  .vt.active { background: #2A241D; color: #fff; }
+  .btn-dark { background: #2A241D; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .btn-dark:hover { background: #4A4036; }
+  .btn-line { background: #fff; color: #6B5D4D; border: 1.5px solid #E0D7C8; padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .btn-line:hover { background: #FAF8F4; }
+
+  .databar {
+    display: flex; align-items: center; gap: 10px; padding: 12px 32px;
+    background: #F5EFE6; border-bottom: 1px solid #EDE6DA; flex-wrap: wrap;
+    font-size: 13px; color: #6B5D4D;
+  }
+  .databar .sync-note { margin-right: auto; }
+
+  .legend { display: flex; gap: 24px; padding: 16px 32px; flex-wrap: wrap; border-bottom: 1px solid #EDE6DA; font-size: 13px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; color: #6B5D4D; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .legend-num { font-weight: 800; font-size: 11px; width: 16px; height: 16px; border-radius: 4px; background: #2A241D; color: #fff; display: grid; place-items: center; }
+  .legend-sub { font-size: 11px; color: #A99A86; }
+
+  .empty { text-align: center; padding: 80px 20px; color: #9A8C7A; font-size: 15px; line-height: 1.8; }
+
+  .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; padding: 24px 32px; }
+  .card { background: #fff; border: 1px solid #E8E0D2; border-radius: 14px; padding: 18px; box-shadow: 0 1px 3px rgba(42,36,29,0.04); }
+  .card-name { font-size: 16px; font-weight: 700; line-height: 1.35; }
+  .card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; background: #2A241D; color: #fff; }
+  .tag-light { font-size: 11px; padding: 3px 8px; border-radius: 5px; background: #F0EBE3; color: #6B5D4D; }
+  .tag-warn { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; background: #FBF3E0; color: #B8862F; }
+  .owner-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .owner-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 3px 9px 3px 3px; border-radius: 20px; }
+  .owner-in { color: #2D6A8E; background: #EAF1F5; }
+  .owner-cust { color: #8E5A2D; background: #F5EEE7; }
+  .owner-kind { font-size: 10px; font-weight: 800; color: #fff; padding: 2px 6px; border-radius: 20px; }
+  .kind-in { background: #2D6A8E; }
+  .kind-cust { background: #8E5A2D; }
+
+  .progress-track { height: 4px; background: #EDE6DA; border-radius: 4px; margin: 14px 0 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #2D8E5A; transition: width .3s; }
+
+  .stepper { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; margin: 14px 0; }
+  .step { text-align: center; }
+  .step-dot { width: 34px; height: 34px; border-radius: 50%; border: 2px solid; font-weight: 800; font-size: 14px; cursor: pointer; margin: 0 auto; display: block; background: #fff; }
+  .step-dot:hover { transform: scale(1.1); transition: transform .15s; }
+  .step-label { font-size: 11px; font-weight: 600; margin-top: 6px; color: #3A3229; }
+  .step-status { font-size: 10px; font-weight: 700; margin-top: 2px; }
+  .doc-btn { font-size: 10px; margin-top: 5px; padding: 3px 8px; border: 1px solid #D8CFC0; background: #fff; border-radius: 5px; cursor: pointer; color: #6B5D4D; }
+  .doc-btn:hover { background: #F0EBE3; }
+
+  .dates { display: flex; justify-content: space-between; font-size: 12px; color: #6B5D4D; padding: 10px 0; border-top: 1px dashed #E8E0D2; margin-top: 6px; }
+  .expand-box { background: #FAF8F4; border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.7; color: #3A3229; margin-top: 4px; }
+  .item-row { font-size: 12.5px; color: #6B5D4D; padding-left: 6px; }
+  .card-actions { display: flex; gap: 14px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #F0EBE3; }
+  .link-btn { background: none; border: none; font-size: 13px; cursor: pointer; color: #6B5D4D; font-weight: 600; padding: 0; font-family: inherit; }
+  .link-btn:hover { color: #2A241D; text-decoration: underline; }
+  .link-btn.danger { color: #C0392B; margin-left: auto; }
+
+  /* calendar */
+  .cal-wrap { padding: 24px 32px; max-width: 900px; margin: 0 auto; }
+  .cal-header { display: flex; justify-content: center; align-items: center; gap: 24px; margin-bottom: 18px; }
+  .cal-title { font-size: 20px; font-weight: 800; }
+  .cal-nav { width: 38px; height: 38px; border-radius: 10px; border: 1.5px solid #E0D7C8; background: #fff; font-size: 20px; cursor: pointer; color: #6B5D4D; }
+  .cal-nav:hover { background: #FAF8F4; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; background: #E8E0D2; border: 1px solid #E8E0D2; border-radius: 10px; overflow: hidden; }
+  .cal-dow { background: #FAF8F4; text-align: center; padding: 10px 0; font-size: 12px; font-weight: 700; }
+  .cal-cell { background: #fff; min-height: 90px; padding: 6px; font-size: 12px; }
+  .cal-day { font-weight: 700; color: #6B5D4D; margin-bottom: 4px; }
+  .cal-events { display: flex; flex-direction: column; gap: 3px; }
+  .cal-event { font-size: 10px; padding: 2px 5px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .cal-legend { display: flex; gap: 20px; justify-content: center; margin-top: 16px; font-size: 12px; color: #6B5D4D; }
+
+  /* modal */
+  .overlay { position: fixed; inset: 0; background: rgba(42,36,29,0.45); display: grid; place-items: center; padding: 20px; z-index: 100; }
+  .modal { background: #fff; border-radius: 16px; padding: 26px; width: 100%; max-width: 600px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+  .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 18px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field-2 { grid-column: 1 / -1; }
+  label.lab { display: block; font-size: 12px; font-weight: 700; color: #6B5D4D; margin-bottom: 5px; }
+  .inp { width: 100%; border: 1.5px solid #E0D7C8; border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: inherit; background: #FEFDFB; }
+  .inp:focus, textarea.inp:focus { outline: none; border-color: #2A241D; }
+  textarea.inp { height: 56px; resize: vertical; }
+
+  .items-block { background: #FAF8F4; border: 1px solid #EDE6DA; border-radius: 10px; padding: 14px; margin: 16px 0; }
+  .items-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .item-edit-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .item-no { font-size: 12px; font-weight: 800; color: #9A8C7A; width: 16px; text-align: center; flex-shrink: 0; }
+  .add-item-btn { background: #2D6A8E; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .add-item-btn:hover { background: #25587A; }
+  .rm-item-btn { background: #fff; border: 1.5px solid #E0D7C8; color: #C0392B; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; flex-shrink: 0; font-size: 13px; }
+  .rm-item-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .rm-item-btn:not(:disabled):hover { background: #FDECEA; }
+
+  .bill-toggle { display: flex; gap: 8px; margin-top: 4px; }
+  .bill-btn { flex: 1; border: 1.5px solid #E0D7C8; background: #fff; padding: 9px 0; font-size: 14px; font-weight: 700; cursor: pointer; color: #6B5D4D; border-radius: 8px; font-family: inherit; }
+  .bill-btn.active { background: #2A241D; color: #fff; border-color: #2A241D; }
+
+  .attach-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .attach-check { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #3A3229; flex: 1; cursor: pointer; }
+  .cnt-input { width: 60px; border: 1.5px solid #E0D7C8; border-radius: 8px; padding: 7px 9px; font-size: 14px; font-family: inherit; background: #FEFDFB; text-align: center; }
+  .cnt-unit { font-size: 13px; color: #6B5D4D; flex-shrink: 0; }
+
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+  .doc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .doc-badge { color: #fff; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 6px; margin-right: 10px; }
+  .doc-sub { font-size: 14px; font-weight: 600; color: #6B5D4D; }
+  .close-x { background: none; border: none; font-size: 18px; cursor: pointer; color: #9A8C7A; padding: 4px; }
+  .doc-pre { background: #FAF8F4; border: 1px solid #EDE6DA; border-radius: 10px; padding: 20px; font-size: 13.5px; line-height: 1.75; white-space: pre-wrap; font-family: 'D2Coding','Malgun Gothic',monospace; color: #2A241D; max-height: 50vh; overflow-y: auto; }
+
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #2A241D; color: #fff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 600; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,0.2); opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+//=================== 데이터 정의 ===================
+const STAGES = [
+  { key: "biz_letter", label: "업무연락서", short: "견적요청", color: "#2D6A8E" },
+  { key: "draft", label: "기안지", short: "구매승인", color: "#8E6A2D" },
+  { key: "order", label: "발주", short: "발주의뢰", color: "#5A2D8E" },
+  { key: "test", label: "시험진행", short: "시험", color: "#2D8E5A" },
+];
+const STATUS = {
+  waiting: { label: "대기중", color: "#9A8C7A", bg: "#F0EBE3" },
+  ongoing: { label: "진행중", color: "#B8862F", bg: "#FBF3E0" },
+  done: { label: "완료", color: "#3A7D4F", bg: "#E5F2E9" },
+};
+const STORAGE_KEY = "sojae_projects_v1";
+
+const fmt = (n) => (n == null || n === "" ? "" : Number(n).toLocaleString("ko-KR"));
+const blankItem = () => ({ product: "", partNo: "", qty: "" });
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function itemLines(items, indent) {
+  const pad = indent || "";
+  const valid = (items || []).filter((it) => it.product || it.partNo || it.qty);
+  if (valid.length === 0) return pad + "- (품목 미입력)";
+  return valid.map((it, i) => {
+    const parts = [];
+    if (it.partNo) parts.push("품번 " + it.partNo);
+    if (it.qty) parts.push(it.qty + "EA");
+    const detail = parts.length ? " (" + parts.join(", ") + ")" : "";
+    return pad + (i + 1) + ". " + (it.product || "-") + detail;
+  }).join("\n");
+}
+
+//=================== 문서 생성기 ===================
+function genBizLetter(p) {
+  return p.name + " 견적 요청\n\n" +
+"1. 평소 귀 부서의 많은 지원에 감사를 드립니다.\n\n" +
+"2. 표제의 건에 관련하여 아래와 같이 업무 협조 부탁드립니다.\n\n" +
+"- 아 래 -\n\n" +
+"가. 요청사항 : " + p.name + " 견적 검토 요청\n\n" +
+"나. 제품/사양 :\n" + itemLines(p.items, "   ") +
+(p.customer ? "\n\n다. 고객사 : " + p.customer : "") + "\n\n" +
+(p.customer ? "라" : "다") + ". 제작 도면 : 별도 첨부 (도면 파일 필수 첨부)\n\n끝";
+}
+
+function genDraft(p) {
+  const att = p.attach || {};
+  const lines = []; let an = 1;
+  if (att.bizLetter !== false) lines.push((an++) + ") 구매팀 업무 연락서 " + (att.bizLetterCnt || 1) + "부");
+  if (att.quote !== false) lines.push((an++) + ") 구매팀 입수 견적서 " + (att.quoteCnt || 1) + "부");
+  if (att.drawing !== false) lines.push((an++) + ") 가공도면 " + (att.drawingCnt || 1) + "부");
+  (att.extras || []).forEach((ex) => { if (ex && ex.label) lines.push((an++) + ") " + ex.label + (ex.cnt ? " " + ex.cnt + "부" : "")); });
+  const bill = (p.customerBill === "유" || p.customerBill === "무") ? p.customerBill : "유 / 무";
+  const reason = p.reason ? p.reason.split("\n").map((l) => "   - " + l).join("\n") : "   - (사유 입력 필요)";
+  return p.name + " 구매 승인의 건\n\n" +
+"아래와 같이 " + p.name + " 구매 승인을 상신하오니, 재가하여 주시기 바랍니다.\n\n" +
+"1. 목 적\n   - " + p.name + " 구매\n\n" +
+"2. 추진 배경\n" + reason + "\n\n" +
+"3. 견적 검토\n" +
+"   - 견적업체 : " + (p.vendor || "-") + "\n" +
+"   - 구매 금액 : " + (fmt(p.price) || "(견적 수취 후 입력)") + "원\n" +
+"   - 품목 :\n" + itemLines(p.items, "     ") +
+(p.customer ? "\n   - 고객사 : " + p.customer : "") + "\n\n" +
+"4. 고객 청구 : " + bill + "\n\n" +
+"- 첨부 자료\n" + lines.join("\n") + "\n\n끝";
+}
+
+function genOrder(p) {
+  return p.name + " 발주 의뢰서\n\n" +
+"아래와 같이 발주를 의뢰합니다.\n\n" +
+"1. 발주 품목 :\n" + itemLines(p.items, "   ") + "\n\n" +
+"2. 발주 금액 : " + (fmt(p.price) || "-") + "원\n" +
+"3. 발주처 : " + (p.vendor || "-") + "\n" +
+"4. 고객사 : " + (p.customer || "-") + "\n" +
+"5. 납기 : " + (p.endDate || "(협의)") + "\n\n이상.";
+}
+
+function genTest(p) {
+  return p.name + " 시험 진행\n\n" +
+"1. 품목 :\n" + itemLines(p.items, "   ") + "\n\n" +
+"2. 시험 일자 : " + (p.testDate || "(미정)");
+}
+
+function genDoc(key, p) {
+  if (key === "biz_letter") return genBizLetter(p);
+  if (key === "draft") return genDraft(p);
+  if (key === "order") return genOrder(p);
+  return genTest(p);
+}
+
+//=================== 저장소 (브라우저 localStorage) ===================
+function loadProjects() {
+  try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : []; }
+  catch (e) { return []; }
+}
+function saveProjects(list) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); return true; }
+  catch (e) { return false; }
+}
+
+//=================== 상태 ===================
+let projects = loadProjects();
+let view = "board";
+let formState = null;       // 등록/수정 폼 데이터 (null이면 닫힘)
+let formEditingId = null;
+let docModal = null;        // { project, stageKey }
+
+//=================== 렌더 ===================
+const app = document.getElementById("app");
+
+function persist() { saveProjects(projects); render(); }
+
+function flash(msg) {
+  let t = document.querySelector(".toast");
+  if (!t) { t = document.createElement("div"); t.className = "toast"; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove("show"), 2000);
+}
+
+function render() {
+  app.innerHTML =
+    headerHTML() + databarHTML() + legendHTML() +
+    (view === "board" ? boardHTML() : calendarHTML());
+  if (formState) app.insertAdjacentHTML("beforeend", formHTML());
+  if (docModal) app.insertAdjacentHTML("beforeend", docModalHTML());
+  bindEvents();
+}
+
+function headerHTML() {
+  return '<div class="header">' +
+    '<div><div class="brand">소재연구실</div><h1 class="title">업무 진행 관리</h1></div>' +
+    '<div class="header-actions">' +
+      '<div class="view-toggle">' +
+        '<button class="vt ' + (view === "board" ? "active" : "") + '" data-view="board">보드</button>' +
+        '<button class="vt ' + (view === "calendar" ? "active" : "") + '" data-view="calendar">일정</button>' +
+      '</div>' +
+      '<button class="btn-dark" data-action="add">+ 업무 등록</button>' +
+    '</div></div>';
+}
+
+function databarHTML() {
+  return '<div class="databar">' +
+    '<span class="sync-note">💾 데이터는 이 PC(브라우저)에 자동 저장됩니다. 팀 공유는 [내보내기]로 파일 저장 후 공유폴더에 올리고, 팀원은 [불러오기]로 엽니다.</span>' +
+    '<button class="btn-line" data-action="export">📤 내보내기 (백업)</button>' +
+    '<button class="btn-line" data-action="import">📥 불러오기</button>' +
+    '<input type="file" id="importFile" accept="application/json" style="display:none" />' +
+    '</div>';
+}
+
+function legendHTML() {
+  return '<div class="legend">' + STAGES.map((s, i) =>
+    '<div class="legend-item"><span class="legend-dot" style="background:' + s.color + '"></span>' +
+    '<span class="legend-num">' + (i + 1) + '</span><span>' + s.label + '</span>' +
+    '<span class="legend-sub">' + s.short + '</span></div>'
+  ).join("") + '</div>';
+}
+
+function boardHTML() {
+  if (projects.length === 0)
+    return '<div class="empty">등록된 업무가 없습니다.<br><b>+ 업무 등록</b>으로 첫 업무를 추가하세요.</div>';
+  return '<div class="board">' + projects.map(cardHTML).join("") + '</div>';
+}
+
+function cardHTML(p) {
+  const stages = p.stages || {};
+  const doneCount = STAGES.filter((s) => stages[s.key] === "done").length;
+  const progress = (doneCount / STAGES.length) * 100;
+  const items = (p.items || []).filter((it) => it.product || it.partNo || it.qty);
+
+  const stepper = STAGES.map((s, i) => {
+    const st = stages[s.key] || "waiting";
+    const meta = STATUS[st];
+    const dotStyle = "background:" + (st === "done" ? s.color : meta.bg) +
+      ";border-color:" + (st === "waiting" ? "#D8CFC0" : s.color) +
+      ";color:" + (st === "done" ? "#fff" : s.color);
+    return '<div class="step">' +
+      '<button class="step-dot" style="' + dotStyle + '" data-cycle="' + p.id + '|' + i + '" title="클릭하여 상태 변경">' + (i + 1) + '</button>' +
+      '<div class="step-label">' + s.label + '</div>' +
+      '<div class="step-status" style="color:' + meta.color + '">' + meta.label + '</div>' +
+      '<button class="doc-btn" data-doc="' + p.id + '|' + s.key + '">문서</button>' +
+      '</div>';
+  }).join("");
+
+  const expanded = p._expanded;
+  let expandBox = "";
+  if (expanded) {
+    let inner = "";
+    if (items.length) inner += '<div style="margin-bottom:8px"><b>품목 목록</b>' +
+      items.map((it, i) => '<div class="item-row">' + (i + 1) + '. ' + esc(it.product || "-") +
+        (it.partNo ? ' / ' + esc(it.partNo) : '') + (it.qty ? ' / ' + esc(it.qty) + 'EA' : '') + '</div>').join("") + '</div>';
+    if (p.vendor) inner += '<div><b>업체:</b> ' + esc(p.vendor) + '</div>';
+    if (p.testDate) inner += '<div><b>시험일자:</b> ' + esc(p.testDate) + '</div>';
+    if (p.reason) inner += '<div><b>사유:</b> ' + esc(p.reason) + '</div>';
+    expandBox = '<div class="expand-box">' + inner + '</div>';
+  }
+
+  return '<div class="card">' +
+    '<div class="card-name">' + esc(p.name) + '</div>' +
+    '<div class="card-meta">' +
+      (p.customer ? '<span class="tag">' + esc(p.customer) + '</span>' : '') +
+      (items.length ? '<span class="tag-light">품목 ' + items.length + '건</span>' : '') +
+      (p.price ? '<span class="tag-light">' + fmt(p.price) + '원</span>' : '<span class="tag-warn">견적 대기</span>') +
+    '</div>' +
+    '<div class="owner-row">' +
+      (p.owner ? '<span class="owner-chip owner-in"><span class="owner-kind kind-in">사내</span>' + esc(p.owner) + '</span>' : '') +
+      (p.custOwner ? '<span class="owner-chip owner-cust"><span class="owner-kind kind-cust">고객</span>' + esc(p.custOwner) + '</span>' : '') +
+    '</div>' +
+    '<div class="progress-track"><div class="progress-fill" style="width:' + progress + '%"></div></div>' +
+    '<div class="stepper">' + stepper + '</div>' +
+    '<div class="dates"><span>📅 시작 ' + (p.startDate || "-") + '</span><span>🏁 완료예정 ' + (p.endDate || "-") + '</span></div>' +
+    expandBox +
+    '<div class="card-actions">' +
+      '<button class="link-btn" data-expand="' + p.id + '">' + (expanded ? "접기" : "상세") + '</button>' +
+      '<button class="link-btn" data-edit="' + p.id + '">수정</button>' +
+      '<button class="link-btn danger" data-remove="' + p.id + '">삭제</button>' +
+    '</div></div>';
+}
+
+//=================== 일정(캘린더) ===================
+let calCursor = (function () { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; })();
+function calendarHTML() {
+  const { y, m } = calCursor;
+  const startDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const events = {};
+  projects.forEach((p) => {
+    const add = (ds, type) => {
+      if (!ds) return; const d = new Date(ds);
+      if (d.getFullYear() === y && d.getMonth() === m) {
+        const day = d.getDate(); (events[day] = events[day] || []).push({ p, type });
+      }
+    };
+    add(p.startDate, "start"); add(p.endDate, "end"); add(p.testDate, "test");
+  });
+  const evStyle = {
+    start: { bg: "#E5F2E9", c: "#3A7D4F", mark: "▶" },
+    end: { bg: "#FBF3E0", c: "#B8862F", mark: "■" },
+    test: { bg: "#EAF1F5", c: "#2D6A8E", mark: "◆" },
+  };
+  const dows = ["일", "월", "화", "수", "목", "금", "토"];
+  let cells = "";
+  for (let i = 0; i < startDow; i++) cells += '<div class="cal-cell"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const evs = (events[d] || []).map((ev) => {
+      const s = evStyle[ev.type];
+      return '<div class="cal-event" style="background:' + s.bg + ';color:' + s.c + '" title="' + esc(ev.p.name) + '">' + s.mark + ' ' + esc(ev.p.name) + '</div>';
+    }).join("");
+    cells += '<div class="cal-cell"><div class="cal-day">' + d + '</div><div class="cal-events">' + evs + '</div></div>';
+  }
+  const dowHead = dows.map((d, i) =>
+    '<div class="cal-dow" style="color:' + (i === 0 ? "#C0392B" : i === 6 ? "#2D6A8E" : "#6B5D4D") + '">' + d + '</div>'
+  ).join("");
+  return '<div class="cal-wrap">' +
+    '<div class="cal-header"><button class="cal-nav" data-cal="-1">‹</button>' +
+    '<div class="cal-title">' + y + '년 ' + (m + 1) + '월</div>' +
+    '<button class="cal-nav" data-cal="1">›</button></div>' +
+    '<div class="cal-grid">' + dowHead + cells + '</div>' +
+    '<div class="cal-legend">' +
+      '<span><b style="color:#3A7D4F">▶</b> 시작일</span>' +
+      '<span><b style="color:#B8862F">■</b> 완료예정일</span>' +
+      '<span><b style="color:#2D6A8E">◆</b> 시험일자</span>' +
+    '</div></div>';
+}
+
+//=================== 등록/수정 폼 ===================
+function defaultForm() {
+  return {
+    name: "", customer: "", custOwner: "", owner: "",
+    items: [blankItem()], price: "", reason: "", vendor: "",
+    startDate: "", endDate: "", testDate: "",
+    customerBill: "무",
+    attach: { bizLetter: true, bizLetterCnt: 1, quote: true, quoteCnt: 1, drawing: true, drawingCnt: 1, extras: [] },
+    currentStage: 0, stages: {},
+  };
+}
+
+function formHTML() {
+  const f = formState;
+  const itemsRows = f.items.map((it, idx) =>
+    '<div class="item-edit-row">' +
+      '<span class="item-no">' + (idx + 1) + '</span>' +
+      '<input class="inp" style="flex:2" placeholder="제품명" data-item="' + idx + '|product" value="' + esc(it.product) + '" />' +
+      '<input class="inp" style="flex:2" placeholder="품번" data-item="' + idx + '|partNo" value="' + esc(it.partNo) + '" />' +
+      '<input class="inp" style="flex:1" placeholder="수량" type="number" data-item="' + idx + '|qty" value="' + esc(it.qty) + '" />' +
+      '<button class="rm-item-btn" data-rmitem="' + idx + '" ' + (f.items.length <= 1 ? "disabled" : "") + ' title="품목 삭제">✕</button>' +
+    '</div>'
+  ).join("");
+
+  const a = f.attach;
+  const extrasRows = (a.extras || []).map((ex, idx) =>
+    '<div class="attach-row">' +
+      '<input class="inp" style="flex:1" placeholder="예: 고객사 요청 메일, 고객사 청구 견적서" data-extra="' + idx + '|label" value="' + esc(ex.label) + '" />' +
+      '<input class="cnt-input" type="number" min="1" data-extra="' + idx + '|cnt" value="' + esc(ex.cnt) + '" />' +
+      '<span class="cnt-unit">부</span>' +
+      '<button class="rm-item-btn" data-rmextra="' + idx + '" title="삭제">✕</button>' +
+    '</div>'
+  ).join("");
+
+  return '<div class="overlay" data-overlay="form">' +
+    '<div class="modal" data-stop="1">' +
+      '<h2 class="modal-title">' + (formEditingId ? "업무 수정" : "업무 등록") + '</h2>' +
+      '<div class="form-grid">' +
+        fieldHTML("업무명 *", '<input class="inp" data-f="name" value="' + esc(f.name) + '" placeholder="예: HD건설기계 신규개발품 인장시편" />', true) +
+        fieldHTML("고객사", '<input class="inp" data-f="customer" value="' + esc(f.customer) + '" />') +
+        fieldHTML("고객사 담당자", '<input class="inp" data-f="custOwner" value="' + esc(f.custOwner) + '" placeholder="예: 최원준 책임" />') +
+        fieldHTML("사내 진행 담당자", '<input class="inp" data-f="owner" value="' + esc(f.owner) + '" placeholder="예: 박성훈" />', true) +
+      '</div>' +
+      '<div class="items-block">' +
+        '<div class="items-header"><span class="lab">품목 (여러 개 추가 가능)</span>' +
+        '<button class="add-item-btn" data-additem="1">+ 품목 추가</button></div>' +
+        itemsRows +
+      '</div>' +
+      '<div class="form-grid">' +
+        fieldHTML("견적가 (원) — 견적 수취 후 입력", '<input class="inp" type="number" data-f="price" value="' + esc(f.price) + '" placeholder="업무연락서 발송 후 입력" />') +
+        fieldHTML("견적/발주 업체", '<input class="inp" data-f="vendor" value="' + esc(f.vendor) + '" />') +
+        fieldHTML("구매 사유 (기안지용)", '<textarea class="inp" data-f="reason" placeholder="예: 정확한 탄성계수 시험을 위한 기계식 인장시험기(ZWICK) 지그 필요">' + esc(f.reason) + '</textarea>', true) +
+        fieldHTML("시작 일정", '<input class="inp" type="date" data-f="startDate" value="' + esc(f.startDate) + '" />') +
+        fieldHTML("완료 예정일", '<input class="inp" type="date" data-f="endDate" value="' + esc(f.endDate) + '" />') +
+        fieldHTML("시험 일자", '<input class="inp" type="date" data-f="testDate" value="' + esc(f.testDate) + '" />') +
+      '</div>' +
+      '<div style="margin-top:16px"><span class="lab">고객 청구 (기안지)</span>' +
+        '<div class="bill-toggle">' +
+          '<button class="bill-btn ' + (f.customerBill === "무" ? "active" : "") + '" data-bill="무">무</button>' +
+          '<button class="bill-btn ' + (f.customerBill === "유" ? "active" : "") + '" data-bill="유">유</button>' +
+        '</div></div>' +
+      '<div class="items-block">' +
+        '<span class="lab">첨부 자료 (기안지) — 부수 입력</span>' +
+        attachRow("bizLetter", "구매팀 업무 연락서", a.bizLetter, a.bizLetterCnt) +
+        attachRow("quote", "구매팀 입수 견적서", a.quote, a.quoteCnt) +
+        attachRow("drawing", "가공도면", a.drawing, a.drawingCnt) +
+        extrasRows +
+        '<button class="add-item-btn" data-addextra="1" style="margin-top:4px">+ 첨부 추가 (고객 메일 등)</button>' +
+      '</div>' +
+      '<div class="modal-actions">' +
+        '<button class="btn-line" data-cancel="1">취소</button>' +
+        '<button class="btn-dark" data-save="1">저장</button>' +
+      '</div>' +
+    '</div></div>';
+}
+
+function fieldHTML(label, inner, span2) {
+  return '<div class="' + (span2 ? "field-2" : "") + '"><label class="lab">' + label + '</label>' + inner + '</div>';
+}
+function attachRow(key, label, checked, cnt) {
+  return '<div class="attach-row">' +
+    '<label class="attach-check"><input type="checkbox" data-attchk="' + key + '" ' + (checked !== false ? "checked" : "") + ' /> ' + label + '</label>' +
+    '<input class="cnt-input" type="number" min="1" data-attcnt="' + key + '" value="' + esc(cnt || 1) + '" ' + (checked === false ? "disabled" : "") + ' />' +
+    '<span class="cnt-unit">부</span></div>';
+}
+
+//=================== 문서 모달 ===================
+function docModalHTML() {
+  const { project, stageKey } = docModal;
+  const stage = STAGES.find((s) => s.key === stageKey);
+  const text = genDoc(stageKey, project);
+  return '<div class="overlay" data-overlay="doc">' +
+    '<div class="modal" data-stop="1">' +
+      '<div class="doc-header"><div>' +
+        '<span class="doc-badge" style="background:' + stage.color + '">' + stage.label + '</span>' +
+        '<span class="doc-sub">' + esc(project.name) + '</span></div>' +
+        '<button class="close-x" data-closedoc="1">✕</button></div>' +
+      '<pre class="doc-pre" id="docText">' + esc(text) + '</pre>' +
+      '<div class="modal-actions">' +
+        '<button class="btn-line" data-closedoc="1">닫기</button>' +
+        '<button class="btn-dark" data-copydoc="1">📋 복사 (그룹웨어 붙여넣기)</button>' +
+      '</div>' +
+    '</div></div>';
+}
+
+//=================== 이벤트 바인딩 ===================
+function bindEvents() {
+  // 뷰 전환
+  app.querySelectorAll("[data-view]").forEach((b) => b.onclick = () => { view = b.dataset.view; render(); });
+  // 업무 등록
+  const addBtn = app.querySelector('[data-action="add"]');
+  if (addBtn) addBtn.onclick = () => { formState = defaultForm(); formEditingId = null; render(); };
+  // 내보내기/불러오기
+  const exp = app.querySelector('[data-action="export"]'); if (exp) exp.onclick = exportData;
+  const imp = app.querySelector('[data-action="import"]');
+  const impFile = app.querySelector("#importFile");
+  if (imp && impFile) { imp.onclick = () => impFile.click(); impFile.onchange = importData; }
+
+  // 캘린더 이동
+  app.querySelectorAll("[data-cal]").forEach((b) => b.onclick = () => {
+    let m = calCursor.m + parseInt(b.dataset.cal), y = calCursor.y;
+    if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; }
+    calCursor = { y, m }; render();
+  });
+
+  // 카드: 단계 순환
+  app.querySelectorAll("[data-cycle]").forEach((b) => b.onclick = () => {
+    const [id, idx] = b.dataset.cycle.split("|");
+    const p = projects.find((x) => x.id === id); if (!p) return;
+    p.stages = p.stages || {};
+    const order = ["waiting", "ongoing", "done"];
+    const cur = p.stages[STAGES[idx].key] || "waiting";
+    p.stages[STAGES[idx].key] = order[(order.indexOf(cur) + 1) % 3];
+    p.currentStage = parseInt(idx);
+    persist();
+  });
+  // 카드: 문서
+  app.querySelectorAll("[data-doc]").forEach((b) => b.onclick = () => {
+    const [id, key] = b.dataset.doc.split("|");
+    const p = projects.find((x) => x.id === id); if (!p) return;
+    docModal = { project: p, stageKey: key }; render();
+  });
+  // 카드: 상세/수정/삭제
+  app.querySelectorAll("[data-expand]").forEach((b) => b.onclick = () => {
+    const p = projects.find((x) => x.id === b.dataset.expand); if (p) { p._expanded = !p._expanded; render(); }
+  });
+  app.querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => {
+    const p = projects.find((x) => x.id === b.dataset.edit); if (!p) return;
+    formState = JSON.parse(JSON.stringify(p));
+    if (!formState.items || !formState.items.length) formState.items = [blankItem()];
+    if (!formState.attach) formState.attach = defaultForm().attach;
+    if (!formState.customerBill) formState.customerBill = "무";
+    formEditingId = p.id; render();
+  });
+  app.querySelectorAll("[data-remove]").forEach((b) => b.onclick = () => {
+    const p = projects.find((x) => x.id === b.dataset.remove); if (!p) return;
+    if (confirm('"' + p.name + '" 업무를 삭제할까요?')) { projects = projects.filter((x) => x.id !== p.id); flash("삭제되었습니다"); persist(); }
+  });
+
+  // 폼 이벤트
+  if (formState) bindFormEvents();
+  // 문서 모달 이벤트
+  if (docModal) bindDocEvents();
+}
+
+function bindFormEvents() {
+  const f = formState;
+  app.querySelectorAll("[data-f]").forEach((el) => {
+    el.oninput = () => { f[el.dataset.f] = el.value; };
+  });
+  app.querySelectorAll("[data-item]").forEach((el) => {
+    el.oninput = () => { const [idx, key] = el.dataset.item.split("|"); f.items[idx][key] = el.value; };
+  });
+  app.querySelectorAll("[data-rmitem]").forEach((b) => b.onclick = () => {
+    const idx = parseInt(b.dataset.rmitem);
+    if (f.items.length > 1) { f.items.splice(idx, 1); render(); }
+  });
+  const addItemBtn = app.querySelector("[data-additem]");
+  if (addItemBtn) addItemBtn.onclick = () => { f.items.push(blankItem()); render(); };
+
+  app.querySelectorAll("[data-bill]").forEach((b) => b.onclick = () => { f.customerBill = b.dataset.bill; render(); });
+
+  app.querySelectorAll("[data-attchk]").forEach((el) => el.onchange = () => {
+    f.attach[el.dataset.attchk] = el.checked; render();
+  });
+  app.querySelectorAll("[data-attcnt]").forEach((el) => el.oninput = () => {
+    const k = el.dataset.attcnt + "Cnt"; f.attach[k] = el.value;
+  });
+  app.querySelectorAll("[data-extra]").forEach((el) => el.oninput = () => {
+    const [idx, key] = el.dataset.extra.split("|"); f.attach.extras[idx][key] = el.value;
+  });
+  app.querySelectorAll("[data-rmextra]").forEach((b) => b.onclick = () => {
+    f.attach.extras.splice(parseInt(b.dataset.rmextra), 1); render();
+  });
+  const addExtraBtn = app.querySelector("[data-addextra]");
+  if (addExtraBtn) addExtraBtn.onclick = () => { f.attach.extras = f.attach.extras || []; f.attach.extras.push({ label: "", cnt: 1 }); render(); };
+
+  app.querySelector("[data-cancel]").onclick = closeForm;
+  app.querySelector("[data-save]").onclick = saveForm;
+  const ov = app.querySelector('[data-overlay="form"]');
+  ov.onclick = (e) => { if (e.target === ov) closeForm(); };
+}
+
+function closeForm() { formState = null; formEditingId = null; render(); }
+
+function saveForm() {
+  const f = formState;
+  if (!f.name || !f.name.trim()) { alert("업무명을 입력하세요."); return; }
+  // _expanded 같은 임시 필드 제거
+  if (formEditingId) {
+    const idx = projects.findIndex((x) => x.id === formEditingId);
+    if (idx >= 0) { f.id = formEditingId; projects[idx] = f; }
+  } else {
+    f.id = Date.now().toString(36);
+    f.createdAt = new Date().toISOString();
+    projects.unshift(f);
+  }
+  formState = null; formEditingId = null;
+  flash("저장되었습니다");
+  persist();
+}
+
+function bindDocEvents() {
+  app.querySelectorAll("[data-closedoc]").forEach((b) => b.onclick = () => { docModal = null; render(); });
+  const ov = app.querySelector('[data-overlay="doc"]');
+  ov.onclick = (e) => { if (e.target === ov) { docModal = null; render(); } };
+  const copyBtn = app.querySelector("[data-copydoc]");
+  if (copyBtn) copyBtn.onclick = () => {
+    const text = genDoc(docModal.stageKey, docModal.project);
+    navigator.clipboard.writeText(text).then(() => flash("복사되었습니다")).catch(() => {
+      const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand("copy"); document.body.removeChild(ta); flash("복사되었습니다");
+    });
+  };
+}
+
+//=================== 백업: 내보내기/불러오기 ===================
+function exportData() {
+  const clean = projects.map((p) => { const c = { ...p }; delete c._expanded; return c; });
+  const blob = new Blob([JSON.stringify(clean, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const today = new Date().toISOString().slice(0, 10);
+  a.href = url; a.download = "업무진행_데이터_" + today + ".json";
+  a.click(); URL.revokeObjectURL(url);
+  flash("내보내기 완료 — 공유폴더에 올리세요");
+}
+
+function importData(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data)) throw new Error("형식 오류");
+      const mode = projects.length > 0
+        ? confirm("불러올 데이터로 어떻게 할까요?\n\n[확인] 현재 데이터에 합치기 (병합)\n[취소] 현재 데이터를 모두 교체")
+        : true;
+      if (mode) {
+        const ids = new Set(projects.map((p) => p.id));
+        data.forEach((p) => { if (!ids.has(p.id)) projects.push(p); else {
+          const i = projects.findIndex((x) => x.id === p.id); projects[i] = p; } });
+        flash("병합 완료 (" + data.length + "건 반영)");
+      } else {
+        projects = data; flash("교체 완료 (" + data.length + "건)");
+      }
+      persist();
+    } catch (err) { alert("불러오기 실패: 올바른 백업 파일이 아닙니다."); }
+    e.target.value = "";
+  };
+  reader.readAsText(file);
+}
+
+//=================== 시작 ===================
+render();
+</script>
+</body>
+</html>
